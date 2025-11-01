@@ -1469,7 +1469,6 @@ impl Clone for TesseractAPI {
 }
 
 #[cfg(feature = "build-tesseract")]
-#[link(name = "tesseract", kind = "static")]
 unsafe extern "C" {
     fn TessBaseAPIMeanTextConf(handle: *mut c_void) -> c_int;
     fn TessBaseAPISetVariable(

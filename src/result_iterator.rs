@@ -293,7 +293,6 @@ impl Drop for ResultIterator {
 }
 
 #[cfg(feature = "build-tesseract")]
-#[link(name = "tesseract", kind = "static")]
 unsafe extern "C" {
     pub fn TessResultIteratorDelete(handle: *mut c_void);
     pub fn TessResultIteratorGetUTF8Text(handle: *mut c_void, level: c_int) -> *mut c_char;
