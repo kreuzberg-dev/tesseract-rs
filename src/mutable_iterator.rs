@@ -220,7 +220,7 @@ impl Drop for MutableIterator {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     // These functions don't exist in Tesseract C API
     // pub fn TessMutableIteratorSetValue(
     //     handle: *mut c_void,

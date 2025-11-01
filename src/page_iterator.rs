@@ -1,8 +1,8 @@
+use crate::TesseractError;
 use crate::enums::{
     TessOrientation, TessPageIteratorLevel, TessParagraphJustification, TessPolyBlockType,
     TessTextlineOrder, TessWritingDirection,
 };
-use crate::TesseractError;
 use std::os::raw::{c_float, c_int, c_void};
 use std::sync::Arc;
 use std::sync::Mutex;
@@ -238,7 +238,7 @@ impl Drop for PageIterator {
 }
 
 #[link(name = "tesseract")]
-extern "C" {
+unsafe extern "C" {
     pub fn TessPageIteratorDelete(handle: *mut c_void);
     pub fn TessPageIteratorBegin(handle: *mut c_void);
     pub fn TessPageIteratorNext(handle: *mut c_void, level: c_int) -> c_int;

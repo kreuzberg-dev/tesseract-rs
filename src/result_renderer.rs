@@ -1,5 +1,5 @@
-use crate::error::{Result, TesseractError};
 use crate::TesseractAPI;
+use crate::error::{Result, TesseractError};
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
 use std::sync::Arc;
@@ -171,7 +171,7 @@ impl Drop for TessResultRenderer {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn TessTextRendererCreate(outputbase: *const c_char) -> *mut c_void;
     pub fn TessHOcrRendererCreate(outputbase: *const c_char) -> *mut c_void;
     pub fn TessPDFRendererCreate(

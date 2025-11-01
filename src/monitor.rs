@@ -49,7 +49,7 @@ impl Drop for TessMonitor {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn TessMonitorCreate() -> *mut c_void;
     pub fn TessMonitorDelete(monitor: *mut c_void);
     pub fn TessMonitorSetDeadlineMSecs(monitor: *mut c_void, deadline: c_int);
