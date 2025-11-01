@@ -8,10 +8,22 @@ mod build_tesseract {
     use std::path::{Path, PathBuf};
 
     // Use specific release versions for stability
-    const LEPTONICA_URL: &str =
-        "https://github.com/DanBloomberg/leptonica/archive/refs/tags/1.84.1.zip";
-    const TESSERACT_URL: &str =
-        "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/5.3.4.zip";
+    const LEPTONICA_VERSION: &str = "1.86.0";
+    const TESSERACT_VERSION: &str = "5.5.1";
+
+    fn leptonica_url() -> String {
+        format!(
+            "https://github.com/DanBloomberg/leptonica/archive/refs/tags/{}.zip",
+            LEPTONICA_VERSION
+        )
+    }
+
+    fn tesseract_url() -> String {
+        format!(
+            "https://github.com/tesseract-ocr/tesseract/archive/refs/tags/{}.zip",
+            TESSERACT_VERSION
+        )
+    }
 
     fn get_custom_out_dir() -> PathBuf {
         if cfg!(target_os = "macos") {
@@ -65,7 +77,7 @@ mod build_tesseract {
             third_party_dir.join("leptonica")
         } else {
             fs::create_dir_all(&third_party_dir).expect("Failed to create third_party directory");
-            download_and_extract(&third_party_dir, LEPTONICA_URL, "leptonica")
+            download_and_extract(&third_party_dir, &leptonica_url(), "leptonica")
         };
 
         let tesseract_dir = if third_party_dir.join("tesseract").exists() {
@@ -73,7 +85,7 @@ mod build_tesseract {
             third_party_dir.join("tesseract")
         } else {
             fs::create_dir_all(&third_party_dir).expect("Failed to create third_party directory");
-            download_and_extract(&third_party_dir, TESSERACT_URL, "tesseract")
+            download_and_extract(&third_party_dir, &tesseract_url(), "tesseract")
         };
 
         let (cmake_cxx_flags, additional_defines) = get_os_specific_config();
@@ -175,7 +187,9 @@ mod build_tesseract {
         let leptonica_lib_dir = leptonica_install_dir.join("lib");
         let tesseract_install_dir = out_dir.join("tesseract");
         let tesseract_cache_dir = cache_dir.join("tesseract");
-        let tessdata_prefix = project_dir.join("tessdata");
+        // TESSDATA_PREFIX should point to parent directory of tessdata, not tessdata itself
+        // Tesseract will append /tessdata/ internally
+        let tessdata_prefix = project_dir.clone();
 
         build_or_use_cached(
             "tesseract",
@@ -496,6 +510,7 @@ mod build_tesseract {
         let out_path = install_dir.join("lib").join(&lib_name);
 
         // For Windows, check multiple possible library names
+        // Include both release and debug variants (debug has 'd' suffix)
         let possible_lib_names: Vec<String> = if cfg!(target_os = "windows") {
             match name {
                 "leptonica" => vec![
@@ -503,6 +518,12 @@ mod build_tesseract {
                     "libleptonica.lib".to_string(),
                     "leptonica-static.lib".to_string(),
                     "leptonica-1.84.1.lib".to_string(),
+                    "leptonica-1.86.0.lib".to_string(),
+                    // Debug variants
+                    "leptonicad.lib".to_string(),
+                    "libleptonica_d.lib".to_string(),
+                    "leptonica-1.84.1d.lib".to_string(),
+                    "leptonica-1.86.0d.lib".to_string(),
                 ],
                 "tesseract" => vec![
                     "tesseract.lib".to_string(),
@@ -510,6 +531,13 @@ mod build_tesseract {
                     "tesseract-static.lib".to_string(),
                     "tesseract53.lib".to_string(),
                     "tesseract54.lib".to_string(),
+                    "tesseract55.lib".to_string(),
+                    // Debug variants
+                    "tesseractd.lib".to_string(),
+                    "libtesseract_d.lib".to_string(),
+                    "tesseract53d.lib".to_string(),
+                    "tesseract54d.lib".to_string(),
+                    "tesseract55d.lib".to_string(),
                 ],
                 _ => vec![format!("{}.lib", name)],
             }
@@ -520,19 +548,22 @@ mod build_tesseract {
         fs::create_dir_all(cache_dir).expect("Failed to create cache directory");
         fs::create_dir_all(out_path.parent().unwrap()).expect("Failed to create output directory");
 
-        if cached_path.exists() {
+        // Determine which library name to use for linking
+        let link_name_to_use = if cached_path.exists() {
             println!("Using cached {} library", name);
             if let Err(e) = fs::copy(&cached_path, &out_path) {
                 println!("cargo:warning=Failed to copy cached library: {}", e);
                 // If cache copy fails, rebuild
                 build_fn();
             }
+            // Use generic name for cached libraries
+            name.to_string()
         } else {
             println!("Building {} library", name);
             build_fn();
 
             // Look for the library with various possible names
-            let mut found_lib_path = None;
+            let mut found_lib_name = None;
             for lib_name in &possible_lib_names {
                 let lib_path = install_dir.join("lib").join(lib_name);
                 if lib_path.exists() {
@@ -541,25 +572,35 @@ mod build_tesseract {
                         name,
                         lib_path.display()
                     );
-                    found_lib_path = Some(lib_path);
+                    // Extract the library name without extension for linking
+                    let link_name = if cfg!(target_os = "windows") {
+                        lib_name.strip_suffix(".lib").unwrap_or(lib_name)
+                    } else {
+                        lib_name
+                            .strip_prefix("lib")
+                            .and_then(|s| s.strip_suffix(".a"))
+                            .unwrap_or(lib_name)
+                    };
+                    found_lib_name = Some((lib_path, link_name.to_string()));
                     break;
                 }
             }
 
-            if let Some(lib_path) = found_lib_path {
+            if let Some((lib_path, link_name)) = found_lib_name {
                 // Copy to expected location for caching
-                if !out_path.exists() {
-                    if let Err(e) = fs::copy(&lib_path, &out_path) {
-                        println!(
-                            "cargo:warning=Failed to copy library to standard location: {}",
-                            e
-                        );
-                    }
+                if out_path.exists() {
+                    // Library already available at expected location.
+                } else if let Err(e) = fs::copy(&lib_path, &out_path) {
+                    println!(
+                        "cargo:warning=Failed to copy library to standard location: {}",
+                        e
+                    );
                 }
                 // Cache the library
                 if let Err(e) = fs::copy(&lib_path, &cached_path) {
                     println!("cargo:warning=Failed to cache library: {}", e);
                 }
+                link_name
             } else {
                 println!(
                     "cargo:warning=Library {} not found! Searched for: {:?}",
@@ -576,26 +617,42 @@ mod build_tesseract {
                         println!("cargo:warning=  - {}", entry.file_name().to_string_lossy());
                     }
                 }
+                // Fallback to generic name
+                name.to_string()
             }
-        }
+        };
 
+        // Set up linking using the determined library name
         println!(
             "cargo:rustc-link-search=native={}",
             install_dir.join("lib").display()
         );
 
-        println!("cargo:rustc-link-lib=static={}", name);
+        // Determine link type based on features
+        #[cfg(feature = "dynamic-linking")]
+        let link_type = "dylib";
+        #[cfg(not(feature = "dynamic-linking"))]
+        let link_type = "static";
 
-        // For Windows, try alternative names if primary fails
-        if cfg!(target_os = "windows") && name == "leptonica" {
-            println!("cargo:rustc-link-lib=static=leptonica-1.84.1");
-        } else if cfg!(target_os = "windows") && name == "tesseract" {
-            println!("cargo:rustc-link-lib=static=tesseract53");
-        }
+        println!("cargo:rustc-link-lib={}={}", link_type, link_name_to_use);
+        println!(
+            "cargo:warning=Linking with library ({} linking): {}",
+            link_type, link_name_to_use
+        );
     }
 }
 
 fn main() {
     #[cfg(feature = "build-tesseract")]
-    build_tesseract::build();
+    {
+        build_tesseract::build();
+    }
+
+    #[cfg(all(feature = "dynamic-linking", not(feature = "build-tesseract")))]
+    {
+        // Dynamic linking with system libraries - no build needed
+        println!("cargo:warning=Using dynamic linking with system-installed Tesseract libraries");
+        println!("cargo:rustc-link-lib=dylib=tesseract");
+        println!("cargo:rustc-link-lib=dylib=leptonica");
+    }
 }
