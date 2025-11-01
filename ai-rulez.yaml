@@ -18,14 +18,14 @@ agents:
       - Every `unsafe` block must state invariants and validate incoming pointers or raw buffers first.
       - Keep the public API minimal and documented; prefer strongly typed enums from `enums.rs` over magic numbers.
       - Integration tests live in `tests/integration_test.rs` and must exercise new user-visible behaviour.
-      - Use `uvx --from "prek>=0.2.12" prek run --all-files` before shipping changes; CI assumes lint-clean trees.
+      - Use `uvx prek run --all-files` before shipping changes; CI assumes lint-clean trees.
 
       Helpful commands:
       - Format: `cargo fmt --all`
       - Lint: `cargo clippy --all-targets --all-features -- -D warnings`
       - Tests: `cargo test --all-features`
       - Benchmarks: `cargo bench`
-      - Validate tooling: `uvx --from "prek>=0.2.12" prek run --all-files`
+      - Validate tooling: `uvx prek run --all-files`
     targets:
       - src/**/*.rs
       - build.rs
@@ -72,7 +72,7 @@ agents:
       - Run everything: `cargo fmt && cargo clippy --all-features -- -D warnings && cargo test --all-features`
       - Integration only: `cargo test --test integration_test`
       - Benchmarks: `cargo bench`
-      - Local lint parity with CI: `uvx --from "prek>=0.2.12" prek run --all-files`
+      - Local lint parity with CI: `uvx prek run --all-files`
     targets:
       - tests/**
       - benches/**
@@ -110,7 +110,7 @@ rules:
   - content: Integration coverage is non-negotiable. Extend `tests/integration_test.rs`, reuse `tests/test_images/`, and keep consumer smoke tests in CI aligned with real-world usage. Tests must set `TESSDATA_PREFIX` when required.
     name: Testing Expectations
     priority: high
-  - content: CI must run `uvx --from "prek>=0.2.12" prek run --show-diff-on-failure --color=always --all-files` before entering build stages, then execute `cargo build`, `cargo test`, and consumer smoke checks on Linux, macOS, and Windows. Keep `.github/workflows/ci.yaml` as the single source of truth.
+  - content: CI runs all jobs in parallel for maximum speed - `validate` (Prek includes fmt + clippy), `unit-tests` (library tests only, no Tesseract), `integration-tests` (matrix on ubuntu/macos/windows with full OCR tests), and `smoke-test` (matrix on all platforms for downstream consumer verification). All jobs are independent and run concurrently. Keep `.github/workflows/ci.yaml` as the single source of truth.
     name: CI Conventions
     priority: high
   - content: Public APIs belong in `src/api.rs` and should favour typed enums (`enums.rs`) and explicit configuration structs. Document usage in rustdoc, keep examples compiling, and avoid leaking raw pointers outside the crate.
@@ -133,8 +133,8 @@ sections:
       2. Install developer tooling:
          ```bash
          cargo install cargo-nextest --locked # optional but recommended
-         uv tool install prek                 # provides local parity with CI
-         ./setup-hooks.sh                     # installs git hooks via Prek
+         curl -LsSf https://astral.sh/uv/install.sh | sh  # install uv
+         uvx prek install                     # installs git hooks
          ```
 
       ### Everyday Commands
@@ -143,7 +143,7 @@ sections:
       - Tests: `cargo test --all-features --verbose`
       - Single integration suite: `cargo test --test integration_test`
       - Benchmarks: `cargo bench`
-      - Full local validation (mirrors CI `validate` stage): `uvx --from "prek>=0.2.12" prek run --show-diff-on-failure --color=always --all-files`
+      - Full local validation (mirrors CI `validate` stage): `uvx prek run --show-diff-on-failure --color=always --all-files`
 
       ### Build Process
       The crate embeds a custom `build.rs` that compiles Tesseract and Leptonica from source when the `build-tesseract` feature is enabled.
@@ -171,10 +171,11 @@ sections:
   - content: |-
       ## Continuous Integration
 
-      CI lives in `.github/workflows/ci.yaml` and mirrors kreuzberg's expectations:
-      - **validate** (Ubuntu): checks out the repo, installs `uv`, and runs `uvx --from "prek>=0.2.12" prek run --show-diff-on-failure --color=always --all-files`.
-      - **Build & Test (Linux)**: sets up the Rust toolchain via `.github/actions/setup-rust`, installs build dependencies, restores cached Tesseract artifacts, then runs `cargo build --all-features`, `cargo test --all-features`, and a consumer smoke project that depends on the local crate.
-      - **Build & Test (Cross-platform)**: matrix over `macos-latest` and `windows-latest` performing the same build/test/smoke steps, including Windows-specific `link.exe` mitigation and MSVC environment setup.
+      CI lives in `.github/workflows/ci.yaml` with all jobs running in parallel:
+      - **validate** (Ubuntu): runs `uvx prek run --show-diff-on-failure --color=always --all-files` which includes formatting, linting (clippy), and all pre-commit checks
+      - **unit-tests** (Ubuntu): runs `cargo test --lib` for fast unit tests without requiring Tesseract build
+      - **integration-tests** (Ubuntu, macOS, Windows matrix): builds with all features and runs `cargo test --test integration_test` with full Tesseract/tessdata setup on all platforms
+      - **smoke-test** (Ubuntu, macOS, Windows matrix): creates a consumer project depending on tesseract-rs to verify downstream usage works correctly
 
       Guidance:
       - Every workflow step must be idempotent; re-runs should not require manual cleanup.

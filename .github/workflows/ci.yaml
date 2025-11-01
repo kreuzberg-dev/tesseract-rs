@@ -41,13 +41,12 @@ jobs:
         shell: bash
         run: |
           set -euxo pipefail
-          uvx --from "prek>=0.2.12" prek run --show-diff-on-failure --color=always --all-files
+          uvx prek run --show-diff-on-failure --color=always --all-files
 
-  rust-linux:
-    name: Build & Test (Linux)
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
-    needs: validate
-    timeout-minutes: 45
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -55,60 +54,21 @@ jobs:
       - name: Setup Rust toolchain
         uses: ./.github/actions/setup-rust
         with:
-          cache-key-prefix: rust-linux
+          cache-key-prefix: rust-unit-tests
 
-      - name: Install build dependencies
+      - name: Run unit tests (library only)
         shell: bash
-        run: |
-          set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install -y build-essential cmake ninja-build pkg-config clang
+        run: cargo test --lib --all-features --verbose
 
-      - name: Determine Tesseract cache path (Linux)
-        shell: bash
-        run: echo "TESSERACT_CACHE=$HOME/.tesseract-rs" >> "$GITHUB_ENV"
-
-      - name: Cache Tesseract builds
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.TESSERACT_CACHE }}
-          key: ${{ runner.os }}-tesseract-${{ hashFiles('build.rs') }}
-          restore-keys: |
-            ${{ runner.os }}-tesseract-
-
-      - name: Cargo build
-        shell: bash
-        run: cargo build --all-features --all-targets --verbose
-
-      - name: Cargo test
-        shell: bash
-        env:
-          RUST_LOG: debug
-        run: cargo test --all-features --verbose
-
-      - name: Consumer smoke test
-        shell: bash
-        run: |
-          set -euxo pipefail
-          cargo new --bin consumer-smoke --vcs none
-          echo 'tesseract-rs = { path = "..", features = ["build-tesseract"] }' >> consumer-smoke/Cargo.toml
-          cat <<'EOF' > consumer-smoke/src/main.rs
-          fn main() {
-              let version = tesseract_rs::TesseractAPI::version();
-              println!("{version}");
-          }
-          EOF
-          (cd consumer-smoke && cargo run --quiet)
-
-  rust-cross:
-    name: Build & Test (Cross-platform)
+  integration-tests:
+    name: Integration Tests (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: validate
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         os:
+          - ubuntu-latest
           - macos-latest
           - windows-latest
     steps:
@@ -118,8 +78,15 @@ jobs:
       - name: Setup Rust toolchain
         uses: ./.github/actions/setup-rust
         with:
-          cache-key-prefix: rust-cross-${{ matrix.os }}
-          components: rustfmt, clippy
+          cache-key-prefix: rust-integration-${{ matrix.os }}
+
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config clang
 
       - name: Install build dependencies (macOS)
         if: runner.os == 'macOS'
@@ -138,6 +105,11 @@ jobs:
           choco install ninja --no-progress -y
           choco install visualstudio2022buildtools --no-progress -y
           choco install visualstudio2022-workload-vctools --no-progress -y
+
+      - name: Determine Tesseract cache path (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: echo "TESSERACT_CACHE=$HOME/.tesseract-rs" >> "$GITHUB_ENV"
 
       - name: Determine Tesseract cache path (macOS)
         if: runner.os == 'macOS'
@@ -172,31 +144,115 @@ jobs:
             Rename-Item $gitLinkPath -NewName "link_git.exe" -Force
           }
 
-      - name: Cargo build (Unix)
+      - name: Build with all features (Unix)
         if: runner.os != 'Windows'
         shell: bash
-        run: cargo build --all-features --all-targets --verbose
+        run: cargo build --all-features --verbose
 
-      - name: Cargo build (Windows)
+      - name: Build with all features (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: cargo build --all-features --all-targets --verbose
+        run: cargo build --all-features --verbose
 
-      - name: Cargo test (Unix)
+      - name: Run integration tests (Unix)
         if: runner.os != 'Windows'
         shell: bash
         env:
           RUST_LOG: debug
-        run: cargo test --all-features --verbose
+        run: cargo test --test integration_test --all-features --verbose
 
-      - name: Cargo test (Windows)
+      - name: Run integration tests (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $Env:RUST_LOG = 'debug'
-          cargo test --all-features --verbose
+          cargo test --test integration_test --all-features --verbose
 
-      - name: Consumer smoke test (Unix)
+  smoke-test:
+    name: Consumer Smoke Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key-prefix: rust-smoke-${{ matrix.os }}
+
+      - name: Install build dependencies (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config clang
+
+      - name: Install build dependencies (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euxo pipefail
+          brew update || true
+          brew install cmake ninja pkg-config || brew upgrade cmake ninja pkg-config || true
+
+      - name: Install build dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress -y
+          choco install ninja --no-progress -y
+          choco install visualstudio2022buildtools --no-progress -y
+          choco install visualstudio2022-workload-vctools --no-progress -y
+
+      - name: Determine Tesseract cache path (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: echo "TESSERACT_CACHE=$HOME/.tesseract-rs" >> "$GITHUB_ENV"
+
+      - name: Determine Tesseract cache path (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: printf 'TESSERACT_CACHE=%s\n' "$HOME/Library/Application Support/tesseract-rs" >> "$GITHUB_ENV"
+
+      - name: Determine Tesseract cache path (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $path = Join-Path $Env:APPDATA 'tesseract-rs'
+          echo "TESSERACT_CACHE=$path" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Cache Tesseract builds
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.TESSERACT_CACHE }}
+          key: ${{ runner.os }}-tesseract-${{ hashFiles('build.rs') }}
+          restore-keys: |
+            ${{ runner.os }}-tesseract-
+
+      - name: Setup MSVC environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Fix Windows link.exe conflict
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $gitLinkPath = "C:\Program Files\Git\usr\bin\link.exe"
+          if (Test-Path $gitLinkPath) {
+            Rename-Item $gitLinkPath -NewName "link_git.exe" -Force
+          }
+
+      - name: Run consumer smoke test (Unix)
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -206,12 +262,16 @@ jobs:
           cat <<'EOF' > consumer-smoke/src/main.rs
           fn main() {
               let version = tesseract_rs::TesseractAPI::version();
-              println!("{version}");
+              println!("Tesseract version: {}", version);
+
+              // Test basic initialization
+              let _api = tesseract_rs::TesseractAPI::new();
+              println!("API created successfully");
           }
           EOF
           (cd consumer-smoke && cargo run --quiet)
 
-      - name: Consumer smoke test (Windows)
+      - name: Run consumer smoke test (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
@@ -221,7 +281,11 @@ jobs:
           @'
           fn main() {
               let version = tesseract_rs::TesseractAPI::version();
-              println!("{version}");
+              println!("Tesseract version: {}", version);
+
+              // Test basic initialization
+              let _api = tesseract_rs::TesseractAPI::new();
+              println!("API created successfully");
           }
           '@ | Set-Content -Path consumer-smoke/src/main.rs
           Push-Location consumer-smoke

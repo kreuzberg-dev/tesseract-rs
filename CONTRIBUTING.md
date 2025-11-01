@@ -75,12 +75,19 @@ The footer should contain any information about Breaking Changes and is also the
 
 We use [Prek](https://github.com/j178/prek) to manage pre-commit and commit-msg hooks. Prek gives us the same validation locally that CI performs.
 
-1. Install [uv](https://docs.astral.sh/uv/) if you don't already have it.
-2. Run `./setup-hooks.sh` to install Prek and the git hooks.
+1. Install [uv](https://docs.astral.sh/uv/) if you don't already have it:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. Install Prek and set up git hooks:
+   ```bash
+   uvx prek install
+   ```
 
 This will install a `commit-msg` hook enforcing Conventional Commits and a `pre-commit` hook that runs the same checks as `prek run --all-files` (formatting, clippy, Cargo checks, etc.).
 
-If checks fail locally, fix the issues and re-run `prek run --all-files`.
+If checks fail locally, fix the issues and re-run `uvx prek run --all-files`.
 
 ## Pull Request Process
 
@@ -102,15 +109,36 @@ Make sure the following tools are available before you start:
 - A C++ compiler (e.g. clang, gcc, or MSVC)
 - CMake (required by the build script)
 - Internet connectivity for downloading Tesseract and Leptonica sources plus training data
-- [Prek](https://github.com/j178/prek) for managing git hooks (`uv tool install prek`)
+- [uv](https://docs.astral.sh/uv/) for running Prek and managing Python tools
 - Optional: [sccache](https://github.com/mozilla/sccache). Export `RUSTC_WRAPPER=sccache` locally if you want to cache compiler outputs.
 
-1. Clone the repository
-2. Install Rust (latest stable version)
-3. Verify the prerequisites above (CMake, compiler, Prek) are installed
-4. Run `prek install && prek install --hook-type commit-msg`
-5. Run `cargo build` to ensure everything compiles
-6. Run `cargo test` to run the test suite
+### Initial Setup
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/cafercangundogdu/tesseract-rs.git
+   cd tesseract-rs
+   ```
+
+2. Install uv (if not already installed):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+3. Set up git hooks with Prek:
+   ```bash
+   uvx prek install
+   ```
+
+4. Build the project:
+   ```bash
+   cargo build
+   ```
+
+5. Run the test suite:
+   ```bash
+   cargo test
+   ```
 
 ## Code Style
 

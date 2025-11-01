@@ -376,9 +376,10 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 ### Quick Start for Contributors
 
 1. Fork and clone the repository
-2. Install development dependencies:
+2. Install uv and set up git hooks:
    ```bash
-   ./setup-hooks.sh
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   uvx prek install
    ```
 3. Make your changes following our commit message format
 4. Run tests: `cargo test`
