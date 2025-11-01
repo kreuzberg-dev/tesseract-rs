@@ -237,7 +237,7 @@ impl Drop for PageIterator {
     }
 }
 
-#[link(name = "tesseract")]
+#[link(name = "tesseract", kind = "static")]
 unsafe extern "C" {
     pub fn TessPageIteratorDelete(handle: *mut c_void);
     pub fn TessPageIteratorBegin(handle: *mut c_void);
