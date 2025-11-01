@@ -5,7 +5,9 @@
 ## Features
 
 - Safe Rust bindings for Tesseract OCR
-- Built-in compilation of Tesseract and Leptonica
+- **Multiple linking options:**
+  - **Static linking** (default): Built-in compilation with no runtime dependencies
+  - **Dynamic linking**: Link to system-installed libraries for faster builds
 - Automatic download of Tesseract training data (English and Turkish)
 - High-level Rust API for common OCR tasks
 - Caching of compiled libraries for faster subsequent builds
@@ -13,12 +15,34 @@
 
 ## Installation
 
-Add this to your `Cargo.toml`:
+### Static Linking (Default)
+
+Static linking builds Tesseract and Leptonica from source and embeds them in your binary. No runtime dependencies required:
 
 ```toml
 [dependencies]
-tesseract-rs = { version = "0.1.20", features = ["build-tesseract"] }
+tesseract-rs = "0.2.0"
+# or explicitly:
+tesseract-rs = { version = "0.2.0", features = ["static-linking"] }
 ```
+
+### Dynamic Linking
+
+Dynamic linking uses system-installed Tesseract and Leptonica libraries. Faster builds, but requires libraries installed on the system:
+
+```toml
+[dependencies]
+tesseract-rs = { version = "0.2.0", features = ["dynamic-linking"], default-features = false }
+```
+
+**System requirements for dynamic linking:**
+- Tesseract 5.x libraries installed (`libtesseract`, `libleptonica`)
+- macOS: `brew install tesseract leptonica`
+- Ubuntu/Debian: `sudo apt-get install libtesseract-dev libleptonica-dev`
+- RHEL/CentOS/Fedora: `sudo dnf install tesseract-devel leptonica-devel`
+- Windows: Install from [Tesseract releases](https://github.com/tesseract-ocr/tesseract/releases) or vcpkg
+
+### Development Dependencies
 
 For development and testing, you'll also need these dependencies:
 
@@ -30,12 +54,26 @@ imageproc = "0.25.0"
 
 ## System Requirements
 
-To build this crate, you need:
+### For Static Linking (Default)
 
-- A C++ compiler (e.g., gcc, clang)
-- CMake
+When building with static linking, the crate will compile Tesseract and Leptonica from source. You need:
+
+- Rust 1.90.0 or later
+- A C++ compiler (e.g., gcc, clang, MSVC on Windows)
+- CMake 3.x or later
+- Internet connection (for downloading Tesseract training data and source code)
+
+### For Dynamic Linking
+
+When using dynamic linking with system-installed libraries, you need:
+
+- Rust 1.90.0 or later
+- Tesseract 5.x and Leptonica libraries installed on your system (see Installation section)
 - Internet connection (for downloading Tesseract training data)
-- Rust 1.83.0 or later
+
+No C++ compiler or CMake required for dynamic linking builds.
+
+For a full development environment checklist (including optional tooling suggestions), see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Environment Variables
 
@@ -299,13 +337,25 @@ fn load_test_image(filename: &str) -> Result<(Vec<u8>, u32, u32), Box<dyn Error>
 
 ## Building
 
-The crate will automatically download and compile Tesseract and Leptonica during the build process. This may take some time on the first build, but subsequent builds will use the cached libraries.
+### Static Linking (Default)
+
+With static linking, the crate will automatically download and compile Tesseract and Leptonica during the build process. This may take some time on the first build (5-10 minutes), but subsequent builds will use the cached libraries.
 
 To clean the cache and force a rebuild:
 
 ```bash
 CARGO_CLEAN=1 cargo build
 ```
+
+### Dynamic Linking
+
+With dynamic linking, the build is much faster (seconds instead of minutes) since it only links against system-installed libraries:
+
+```bash
+cargo build --no-default-features --features dynamic-linking
+```
+
+**Note**: Dynamic linking requires Tesseract and Leptonica to be installed on your system (see Installation section).
 
 ## Documentation
 

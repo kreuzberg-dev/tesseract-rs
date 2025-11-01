@@ -73,19 +73,14 @@ The footer should contain any information about Breaking Changes and is also the
 
 ## Setting Up Commit Hooks
 
-We use Husky to enforce code quality and commit message standards. To set up the hooks:
+We use [Prek](https://github.com/j178/prek) to manage pre-commit and commit-msg hooks. Prek gives us the same validation locally that CI performs.
 
-1. Install Node.js if you haven't already
-2. Run `./setup-hooks.sh` or `npm install` in the project root
-3. The pre-commit and commit-msg hooks will be automatically installed
+1. Install [uv](https://docs.astral.sh/uv/) if you don't already have it.
+2. Run `./setup-hooks.sh` to install Prek and the git hooks.
 
-The hooks will:
-- **Pre-commit**: Check code formatting (rustfmt) and run clippy before allowing commits
-- **Commit-msg**: Validate commit messages against our conventional commit format
+This will install a `commit-msg` hook enforcing Conventional Commits and a `pre-commit` hook that runs the same checks as `prek run --all-files` (formatting, clippy, Cargo checks, etc.).
 
-If pre-commit checks fail:
-- Run `cargo fmt` to fix formatting issues
-- Run `cargo clippy` to see warnings and fix them
+If checks fail locally, fix the issues and re-run `prek run --all-files`.
 
 ## Pull Request Process
 
@@ -99,13 +94,21 @@ If pre-commit checks fail:
 
 ## Development Setup
 
+### Prerequisites
+
+Make sure the following tools are available before you start:
+
+- Rust 1.83.0 or newer (the project targets the 2024 edition)
+- A C++ compiler (e.g. clang, gcc, or MSVC)
+- CMake (required by the build script)
+- Internet connectivity for downloading Tesseract and Leptonica sources plus training data
+- [Prek](https://github.com/j178/prek) for managing git hooks (`uv tool install prek`)
+- Optional: [sccache](https://github.com/mozilla/sccache). Export `RUSTC_WRAPPER=sccache` locally if you want to cache compiler outputs.
+
 1. Clone the repository
 2. Install Rust (latest stable version)
-3. Install build dependencies:
-   - CMake
-   - C++ compiler
-   - Node.js (for commit hooks)
-4. Run `npm install` to set up commit hooks
+3. Verify the prerequisites above (CMake, compiler, Prek) are installed
+4. Run `prek install && prek install --hook-type commit-msg`
 5. Run `cargo build` to ensure everything compiles
 6. Run `cargo test` to run the test suite
 
