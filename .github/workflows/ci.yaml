@@ -100,11 +100,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Set-StrictMode -Version Latest
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress -y
-          choco install ninja --no-progress -y
-          choco install visualstudio2022buildtools --no-progress -y
-          choco install visualstudio2022-workload-vctools --no-progress -y
+          # Install tools if not already present (continue on chocolatey errors as packages may already be installed)
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress -y --ignore-package-exit-codes
+          choco install ninja --no-progress -y --ignore-package-exit-codes
+          choco install visualstudio2022buildtools --no-progress -y --ignore-package-exit-codes
+          choco install visualstudio2022-workload-vctools --no-progress -y --ignore-package-exit-codes
 
       - name: Determine Tesseract cache path (Linux)
         if: runner.os == 'Linux'
@@ -208,11 +208,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          Set-StrictMode -Version Latest
-          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress -y
-          choco install ninja --no-progress -y
-          choco install visualstudio2022buildtools --no-progress -y
-          choco install visualstudio2022-workload-vctools --no-progress -y
+          # Install tools if not already present (continue on chocolatey errors as packages may already be installed)
+          choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System' --no-progress -y --ignore-package-exit-codes
+          choco install ninja --no-progress -y --ignore-package-exit-codes
+          choco install visualstudio2022buildtools --no-progress -y --ignore-package-exit-codes
+          choco install visualstudio2022-workload-vctools --no-progress -y --ignore-package-exit-codes
 
       - name: Determine Tesseract cache path (Linux)
         if: runner.os == 'Linux'
