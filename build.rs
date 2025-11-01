@@ -324,9 +324,16 @@ mod build_tesseract {
             }
         } else if cfg!(target_os = "windows") {
             // Windows-specific MSVC flags
-            cmake_cxx_flags.push_str("/EHsc /MP /std:c++17 ");
-            additional_defines.push(("CMAKE_CXX_FLAGS_RELEASE".to_string(), "/MD /O2".to_string()));
-            additional_defines.push(("CMAKE_CXX_FLAGS_DEBUG".to_string(), "/MDd /Od".to_string()));
+            // Add TESSERACT_STATIC to prevent __declspec(dllimport) on API functions
+            cmake_cxx_flags.push_str("/EHsc /MP /std:c++17 /DTESSERACT_STATIC ");
+            additional_defines.push((
+                "CMAKE_CXX_FLAGS_RELEASE".to_string(),
+                "/MD /O2 /DTESSERACT_STATIC".to_string(),
+            ));
+            additional_defines.push((
+                "CMAKE_CXX_FLAGS_DEBUG".to_string(),
+                "/MDd /Od /DTESSERACT_STATIC".to_string(),
+            ));
             // Do NOT set CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS for static libraries
             // This flag causes CMake to export symbols for DLL linkage which creates
             // __imp_ prefixed symbols that the linker can't find in static libraries
@@ -363,11 +370,12 @@ mod build_tesseract {
             println!("cargo:rustc-link-lib=m");
             println!("cargo:rustc-link-lib=dl");
         } else if cfg!(target_os = "windows") {
-            // Additional linker flags are generally not required for Windows,
-            // as MSVC automatically links the necessary libraries.
-            // However, for some special cases, additions can be made as follows:
-            // println!("cargo:rustc-link-lib=user32");
-            // println!("cargo:rustc-link-lib=gdi32");
+            // Windows requires explicit linking of system libraries for static tesseract
+            println!("cargo:rustc-link-lib=user32");
+            println!("cargo:rustc-link-lib=gdi32");
+            println!("cargo:rustc-link-lib=ws2_32");
+            println!("cargo:rustc-link-lib=advapi32");
+            println!("cargo:rustc-link-lib=shell32");
         }
 
         println!(
