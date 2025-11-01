@@ -259,14 +259,76 @@ jobs:
           set -euxo pipefail
           cargo new --bin consumer-smoke --vcs none
           echo 'tesseract-rs = { path = "..", features = ["build-tesseract"] }' >> consumer-smoke/Cargo.toml
-          cat <<'EOF' > consumer-smoke/src/main.rs
-          fn main() {
-              let version = tesseract_rs::TesseractAPI::version();
-              println!("Tesseract version: {}", version);
+          echo 'image = "0.25"' >> consumer-smoke/Cargo.toml
 
-              // Test basic initialization
-              let _api = tesseract_rs::TesseractAPI::new();
-              println!("API created successfully");
+          # Copy test image for smoke test
+          mkdir -p consumer-smoke/test_images
+          cp tests/test_images/sample_text.png consumer-smoke/test_images/
+
+          cat <<'EOF' > consumer-smoke/src/main.rs
+          use std::path::PathBuf;
+
+          fn get_tessdata_dir() -> PathBuf {
+              if cfg!(target_os = "macos") {
+                  let home = std::env::var("HOME").expect("HOME not set");
+                  PathBuf::from(home).join("Library/Application Support/tesseract-rs/tessdata")
+              } else if cfg!(target_os = "linux") {
+                  let home = std::env::var("HOME").expect("HOME not set");
+                  PathBuf::from(home).join(".tesseract-rs/tessdata")
+              } else if cfg!(target_os = "windows") {
+                  let appdata = std::env::var("APPDATA").expect("APPDATA not set");
+                  PathBuf::from(appdata).join("tesseract-rs/tessdata")
+              } else {
+                  panic!("Unsupported OS");
+              }
+          }
+
+          fn main() {
+              // Test 1: Basic API creation and version
+              let version = tesseract_rs::TesseractAPI::version();
+              println!("✓ Tesseract version: {}", version);
+
+              // Test 2: API initialization (exercises TessBaseAPICreate, TessBaseAPIInit3)
+              let api = tesseract_rs::TesseractAPI::new();
+              println!("✓ API created successfully");
+
+              let tessdata_dir = get_tessdata_dir();
+              api.init(tessdata_dir, "eng")
+                  .expect("Failed to initialize Tesseract");
+              println!("✓ API initialized with eng language");
+
+              // Test 3: Set variables (exercises TessBaseAPISetVariable)
+              api.set_variable("debug_file", "/dev/null")
+                  .expect("Failed to set variable");
+              println!("✓ Variable set successfully");
+
+              // Test 4: Set page segmentation mode (exercises TessBaseAPISetPageSegMode)
+              api.set_page_seg_mode(tesseract_rs::TessPageSegMode::PSM_AUTO)
+                  .expect("Failed to set page seg mode");
+              println!("✓ Page segmentation mode set");
+
+              // Test 5: Load image and perform OCR (exercises TessBaseAPISetImage, TessBaseAPIGetUTF8Text)
+              let img = image::open("test_images/sample_text.png")
+                  .expect("Failed to open test image");
+              let rgb_img = img.to_rgb8();
+              let (width, height) = rgb_img.dimensions();
+
+              api.set_image(rgb_img.as_raw(), width as i32, height as i32, 3, (width * 3) as i32)
+                  .expect("Failed to set image");
+              println!("✓ Image set successfully");
+
+              let text = api.get_utf8_text().expect("Failed to get text");
+              println!("✓ OCR performed successfully, got {} chars of text", text.len());
+
+              // Test 6: Get TSV output (exercises TessBaseAPIGetTsvText, TessDeleteText)
+              let _tsv = api.get_tsv_text(0).expect("Failed to get TSV text");
+              println!("✓ TSV text retrieved successfully");
+
+              // Test 7: Get HOCR output (exercises TessBaseAPIGetHOCRText)
+              let _hocr = api.get_hocr_text(0).expect("Failed to get HOCR text");
+              println!("✓ HOCR text retrieved successfully");
+
+              println!("\n✅ All consumer smoke tests passed!");
           }
           EOF
           (cd consumer-smoke && cargo run --quiet)
@@ -278,14 +340,76 @@ jobs:
           Set-StrictMode -Version Latest
           cargo new --bin consumer-smoke --vcs none
           Add-Content -Path consumer-smoke/Cargo.toml -Value 'tesseract-rs = { path = "..", features = ["build-tesseract"] }'
-          @'
-          fn main() {
-              let version = tesseract_rs::TesseractAPI::version();
-              println!("Tesseract version: {}", version);
+          Add-Content -Path consumer-smoke/Cargo.toml -Value 'image = "0.25"'
 
-              // Test basic initialization
-              let _api = tesseract_rs::TesseractAPI::new();
-              println!("API created successfully");
+          # Copy test image for smoke test
+          New-Item -ItemType Directory -Force -Path consumer-smoke/test_images
+          Copy-Item tests/test_images/sample_text.png -Destination consumer-smoke/test_images/
+
+          @'
+          use std::path::PathBuf;
+
+          fn get_tessdata_dir() -> PathBuf {
+              if cfg!(target_os = "macos") {
+                  let home = std::env::var("HOME").expect("HOME not set");
+                  PathBuf::from(home).join("Library/Application Support/tesseract-rs/tessdata")
+              } else if cfg!(target_os = "linux") {
+                  let home = std::env::var("HOME").expect("HOME not set");
+                  PathBuf::from(home).join(".tesseract-rs/tessdata")
+              } else if cfg!(target_os = "windows") {
+                  let appdata = std::env::var("APPDATA").expect("APPDATA not set");
+                  PathBuf::from(appdata).join("tesseract-rs/tessdata")
+              } else {
+                  panic!("Unsupported OS");
+              }
+          }
+
+          fn main() {
+              // Test 1: Basic API creation and version
+              let version = tesseract_rs::TesseractAPI::version();
+              println!("✓ Tesseract version: {}", version);
+
+              // Test 2: API initialization (exercises TessBaseAPICreate, TessBaseAPIInit3)
+              let api = tesseract_rs::TesseractAPI::new();
+              println!("✓ API created successfully");
+
+              let tessdata_dir = get_tessdata_dir();
+              api.init(tessdata_dir, "eng")
+                  .expect("Failed to initialize Tesseract");
+              println!("✓ API initialized with eng language");
+
+              // Test 3: Set variables (exercises TessBaseAPISetVariable)
+              api.set_variable("debug_file", "NUL")
+                  .expect("Failed to set variable");
+              println!("✓ Variable set successfully");
+
+              // Test 4: Set page segmentation mode (exercises TessBaseAPISetPageSegMode)
+              api.set_page_seg_mode(tesseract_rs::TessPageSegMode::PSM_AUTO)
+                  .expect("Failed to set page seg mode");
+              println!("✓ Page segmentation mode set");
+
+              // Test 5: Load image and perform OCR (exercises TessBaseAPISetImage, TessBaseAPIGetUTF8Text)
+              let img = image::open("test_images/sample_text.png")
+                  .expect("Failed to open test image");
+              let rgb_img = img.to_rgb8();
+              let (width, height) = rgb_img.dimensions();
+
+              api.set_image(rgb_img.as_raw(), width as i32, height as i32, 3, (width * 3) as i32)
+                  .expect("Failed to set image");
+              println!("✓ Image set successfully");
+
+              let text = api.get_utf8_text().expect("Failed to get text");
+              println!("✓ OCR performed successfully, got {} chars of text", text.len());
+
+              // Test 6: Get TSV output (exercises TessBaseAPIGetTsvText, TessDeleteText)
+              let _tsv = api.get_tsv_text(0).expect("Failed to get TSV text");
+              println!("✓ TSV text retrieved successfully");
+
+              // Test 7: Get HOCR output (exercises TessBaseAPIGetHOCRText)
+              let _hocr = api.get_hocr_text(0).expect("Failed to get HOCR text");
+              println!("✓ HOCR text retrieved successfully");
+
+              println!("\n✅ All consumer smoke tests passed!");
           }
           '@ | Set-Content -Path consumer-smoke/src/main.rs
           Push-Location consumer-smoke

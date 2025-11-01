@@ -327,10 +327,9 @@ mod build_tesseract {
             cmake_cxx_flags.push_str("/EHsc /MP /std:c++17 ");
             additional_defines.push(("CMAKE_CXX_FLAGS_RELEASE".to_string(), "/MD /O2".to_string()));
             additional_defines.push(("CMAKE_CXX_FLAGS_DEBUG".to_string(), "/MDd /Od".to_string()));
-            additional_defines.push((
-                "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS".to_string(),
-                "ON".to_string(),
-            ));
+            // Do NOT set CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS for static libraries
+            // This flag causes CMake to export symbols for DLL linkage which creates
+            // __imp_ prefixed symbols that the linker can't find in static libraries
             additional_defines.push((
                 "CMAKE_MSVC_RUNTIME_LIBRARY".to_string(),
                 "MultiThreadedDLL".to_string(),
