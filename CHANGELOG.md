@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Export of additional enums: TessOrientation, TessTextlineOrder, TessWritingDirection
 
 ### Changed
-- **BREAKING**: Upgraded to Rust 2024 edition (requires Rust 1.90.0+)
+- **BREAKING**: Upgraded to Rust 2024 edition (requires Rust 1.85.0+)
 - **BREAKING**: Default feature changed from `build-tesseract` to `static-linking`
 - Updated Tesseract from 5.3.4 to 5.5.1
 - Updated Leptonica from 1.84.1 to 1.86.0
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced TESSDATA_PREFIX handling to point to parent directory
 - All `extern "C"` blocks now require `unsafe` keyword (Rust 2024)
 - Updated dependencies: libc, thiserror, image, reqwest, zip, and others
-- Lowered minimum Rust version from 1.83.0 to 1.90.0
+- Lowered minimum Rust version from 1.83.0 to 1.85.0
 - Improved build script with better library name detection
 - Enhanced Tesseract build caching strategy
 

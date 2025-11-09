@@ -58,7 +58,7 @@ imageproc = "0.25.0"
 
 When building with static linking, the crate will compile Tesseract and Leptonica from source. You need:
 
-- Rust 1.90.0 or later
+- Rust 1.85.0 or later
 - A C++ compiler (e.g., gcc, clang, MSVC on Windows)
 - CMake 3.x or later
 - Internet connection (for downloading Tesseract training data and source code)
@@ -67,7 +67,7 @@ When building with static linking, the crate will compile Tesseract and Leptonic
 
 When using dynamic linking with system-installed libraries, you need:
 
-- Rust 1.90.0 or later
+- Rust 1.85.0 or later
 - Tesseract 5.x and Leptonica libraries installed on your system (see Installation section)
 - Internet connection (for downloading Tesseract training data)
 

@@ -81,10 +81,9 @@ agents:
 commands: []
 mcp_servers:
   - args:
-      - -y
-      - ai-rulez@latest
+      - ai-rulez
       - mcp
-    command: npx
+    command: uvx
     description: AI-Rulez MCP server for configuration management
     name: ai-rulez
 metadata:

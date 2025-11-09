@@ -105,7 +105,7 @@ If checks fail locally, fix the issues and re-run `uvx prek run --all-files`.
 
 Make sure the following tools are available before you start:
 
-- Rust 1.83.0 or newer (the project targets the 2024 edition)
+- Rust 1.85.0 or newer (the project targets the 2024 edition)
 - A C++ compiler (e.g. clang, gcc, or MSVC)
 - CMake (required by the build script)
 - Internet connectivity for downloading Tesseract and Leptonica sources plus training data

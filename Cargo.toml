@@ -18,7 +18,7 @@ keywords = [
 categories = ["external-ffi-bindings", "computer-vision", "text-processing"]
 build = "build.rs"
 links = "tesseract"
-rust-version = "1.90.0"
+rust-version = "1.85.0"
 exclude = ["tessdata/*", "third_party/*"]
 
 [dependencies]
