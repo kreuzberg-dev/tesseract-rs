@@ -188,7 +188,7 @@ mod build_tesseract {
         let tesseract_install_dir = out_dir.join("tesseract");
         let tesseract_cache_dir = cache_dir.join("tesseract");
         // TESSDATA_PREFIX should point to parent directory of tessdata, not tessdata itself
-        // Tesseract will append /tessdata/ internally
+        // Tesseract will append the platform-specific path separator and 'tessdata' directory internally
         let tessdata_prefix = project_dir.clone();
 
         build_or_use_cached(
