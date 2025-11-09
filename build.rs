@@ -25,7 +25,11 @@ mod build_tesseract {
         )
     }
 
-    fn get_custom_out_dir() -> PathBuf {
+    fn get_preferred_out_dir() -> PathBuf {
+        if let Ok(custom) = env::var("TESSERACT_RS_CACHE_DIR") {
+            return PathBuf::from(custom);
+        }
+
         if cfg!(target_os = "macos") {
             let home_dir = env::var("HOME").unwrap_or_else(|_| {
                 env::var("USER")
@@ -54,9 +58,25 @@ mod build_tesseract {
         }
     }
 
+    fn prepare_out_dir() -> PathBuf {
+        let preferred = get_preferred_out_dir();
+        match fs::create_dir_all(&preferred) {
+            Ok(_) => preferred,
+            Err(err) => {
+                println!(
+                    "cargo:warning=Failed to create cache dir {:?}: {}. Falling back to temp dir.",
+                    preferred, err
+                );
+                let fallback = env::temp_dir().join("tesseract-rs-cache");
+                fs::create_dir_all(&fallback)
+                    .expect("Failed to create fallback cache directory in temp dir");
+                fallback
+            }
+        }
+    }
+
     pub fn build() {
-        let custom_out_dir = get_custom_out_dir();
-        std::fs::create_dir_all(&custom_out_dir).expect("Failed to create custom out directory");
+        let custom_out_dir = prepare_out_dir();
 
         println!("cargo:warning=custom_out_dir: {:?}", custom_out_dir);
 
