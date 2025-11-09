@@ -596,7 +596,10 @@ mod build_tesseract {
             if let Some((lib_path, link_name)) = found_lib_name {
                 // Copy to expected location for caching
                 if out_path.exists() {
-                    // Library already available at expected location.
+                    println!(
+                        "cargo:warning=Library already available at expected location: {}",
+                        out_path.display()
+                    );
                 } else if let Err(e) = fs::copy(&lib_path, &out_path) {
                     println!(
                         "cargo:warning=Failed to copy library to standard location: {}",
