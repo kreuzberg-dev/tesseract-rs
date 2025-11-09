@@ -555,6 +555,12 @@ mod build_tesseract {
         fs::create_dir_all(cache_dir).expect("Failed to create cache directory");
         fs::create_dir_all(out_path.parent().unwrap()).expect("Failed to create output directory");
 
+        let candidate_lib_dirs = [
+            install_dir.join("lib"),
+            install_dir.join("lib64"),
+            install_dir.join("lib").join("tesseract"),
+        ];
+
         // Determine which library name to use for linking
         let link_name_to_use = if cached_path.exists() {
             println!("Using cached {} library", name);
@@ -571,25 +577,27 @@ mod build_tesseract {
 
             // Look for the library with various possible names
             let mut found_lib_name = None;
-            for lib_name in &possible_lib_names {
-                let lib_path = install_dir.join("lib").join(lib_name);
-                if lib_path.exists() {
-                    println!(
-                        "cargo:warning=Found {} library at: {}",
-                        name,
-                        lib_path.display()
-                    );
-                    // Extract the library name without extension for linking
-                    let link_name = if cfg!(target_os = "windows") {
-                        lib_name.strip_suffix(".lib").unwrap_or(lib_name)
-                    } else {
-                        lib_name
-                            .strip_prefix("lib")
-                            .and_then(|s| s.strip_suffix(".a"))
-                            .unwrap_or(lib_name)
-                    };
-                    found_lib_name = Some((lib_path, link_name.to_string()));
-                    break;
+            'search: for lib_name in &possible_lib_names {
+                for dir in &candidate_lib_dirs {
+                    let lib_path = dir.join(lib_name);
+                    if lib_path.exists() {
+                        println!(
+                            "cargo:warning=Found {} library at: {}",
+                            name,
+                            lib_path.display()
+                        );
+                        // Extract the library name without extension for linking
+                        let link_name = if cfg!(target_os = "windows") {
+                            lib_name.strip_suffix(".lib").unwrap_or(lib_name)
+                        } else {
+                            lib_name
+                                .strip_prefix("lib")
+                                .and_then(|s| s.strip_suffix(".a"))
+                                .unwrap_or(lib_name)
+                        };
+                        found_lib_name = Some((lib_path, link_name.to_string()));
+                        break 'search;
+                    }
                 }
             }
 
@@ -616,15 +624,15 @@ mod build_tesseract {
                     "cargo:warning=Library {} not found! Searched for: {:?}",
                     name, possible_lib_names
                 );
-                println!(
-                    "cargo:warning=In directory: {}",
-                    install_dir.join("lib").display()
-                );
-                // List files in lib directory for debugging
-                if let Ok(entries) = fs::read_dir(install_dir.join("lib")) {
-                    println!("cargo:warning=Files in lib directory:");
-                    for entry in entries.flatten() {
-                        println!("cargo:warning=  - {}", entry.file_name().to_string_lossy());
+                for dir in &candidate_lib_dirs {
+                    println!("cargo:warning=Checked directory: {}", dir.display());
+                    if let Ok(entries) = fs::read_dir(dir) {
+                        println!("cargo:warning=Files in {}:", dir.display());
+                        for entry in entries.flatten() {
+                            println!("cargo:warning=  - {}", entry.file_name().to_string_lossy());
+                        }
+                    } else {
+                        println!("cargo:warning=Directory not accessible: {}", dir.display());
                     }
                 }
                 // Fallback to generic name
@@ -633,10 +641,9 @@ mod build_tesseract {
         };
 
         // Set up linking using the determined library name
-        println!(
-            "cargo:rustc-link-search=native={}",
-            install_dir.join("lib").display()
-        );
+        for dir in candidate_lib_dirs.iter().filter(|d| d.exists()) {
+            println!("cargo:rustc-link-search=native={}", dir.display());
+        }
 
         // Determine link type based on features
         #[cfg(feature = "dynamic-linking")]
