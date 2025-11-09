@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prek-based git hooks replacing npm/Husky dependency
 - Dedicated Prek validation job in CI pipeline
 - Export of additional enums: TessOrientation, TessTextlineOrder, TessWritingDirection
+- Support for `TESSERACT_RS_CACHE_DIR` to override the build cache location
 
 ### Changed
 - **BREAKING**: Upgraded to Rust 2024 edition (requires Rust 1.85.0+)
@@ -37,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Lowered minimum Rust version from 1.83.0 to 1.85.0
 - Improved build script with better library name detection
 - Enhanced Tesseract build caching strategy
+- Build script now searches `lib`, `lib64`, and nested `lib/tesseract` directories when locating static libraries
+- Automatic fallback to a temporary cache directory when the default cache path is not writable
 
 ### Fixed
 - TESSDATA_PREFIX now correctly points to parent directory instead of tessdata itself
