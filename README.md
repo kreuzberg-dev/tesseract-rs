@@ -85,6 +85,7 @@ The following environment variables affect the build and test process:
 - `RUSTC_WRAPPER`: If set to "sccache", enables compiler caching with sccache
 - `CC`: Compiler selection for C code (affects Linux builds)
 - `HOME` (Unix) or `APPDATA` (Windows): Used to determine cache directory location
+- `TESSERACT_RS_CACHE_DIR`: Optional override for the cache root. When unset or not writable, the build falls back to the default OS-specific directory, and if that still fails, a temporary directory under the system temp folder is used automatically.
 
 ### Test Variables
 
