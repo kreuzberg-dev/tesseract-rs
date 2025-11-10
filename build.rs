@@ -190,9 +190,15 @@ mod build_tesseract {
 
                 // Windows-specific defines
                 if cfg!(target_os = "windows") {
-                    leptonica_config
-                        .define("CMAKE_C_FLAGS_RELEASE", "/MD /O2")
-                        .define("CMAKE_C_FLAGS_DEBUG", "/MDd /Od");
+                    if cfg!(target_env = "msvc") {
+                        leptonica_config
+                            .define("CMAKE_C_FLAGS_RELEASE", "/MD /O2")
+                            .define("CMAKE_C_FLAGS_DEBUG", "/MDd /Od");
+                    } else {
+                        leptonica_config
+                            .define("CMAKE_C_FLAGS_RELEASE", "-O2")
+                            .define("CMAKE_C_FLAGS_DEBUG", "-O0 -g");
+                    }
                 }
 
                 for (key, value) in &additional_defines {
@@ -343,24 +349,37 @@ mod build_tesseract {
                 additional_defines.push(("CMAKE_CXX_COMPILER".to_string(), "g++".to_string()));
             }
         } else if cfg!(target_os = "windows") {
-            // Windows-specific MSVC flags
-            // Add TESSERACT_STATIC to prevent __declspec(dllimport) on API functions
-            cmake_cxx_flags.push_str("/EHsc /MP /std:c++17 /DTESSERACT_STATIC ");
-            additional_defines.push((
-                "CMAKE_CXX_FLAGS_RELEASE".to_string(),
-                "/MD /O2 /DTESSERACT_STATIC".to_string(),
-            ));
-            additional_defines.push((
-                "CMAKE_CXX_FLAGS_DEBUG".to_string(),
-                "/MDd /Od /DTESSERACT_STATIC".to_string(),
-            ));
-            // Do NOT set CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS for static libraries
-            // This flag causes CMake to export symbols for DLL linkage which creates
-            // __imp_ prefixed symbols that the linker can't find in static libraries
-            additional_defines.push((
-                "CMAKE_MSVC_RUNTIME_LIBRARY".to_string(),
-                "MultiThreadedDLL".to_string(),
-            ));
+            if cfg!(target_env = "msvc") {
+                // Windows-specific MSVC flags
+                // Add TESSERACT_STATIC to prevent __declspec(dllimport) on API functions
+                cmake_cxx_flags.push_str("/EHsc /MP /std:c++17 /DTESSERACT_STATIC ");
+                additional_defines.push((
+                    "CMAKE_CXX_FLAGS_RELEASE".to_string(),
+                    "/MD /O2 /DTESSERACT_STATIC".to_string(),
+                ));
+                additional_defines.push((
+                    "CMAKE_CXX_FLAGS_DEBUG".to_string(),
+                    "/MDd /Od /DTESSERACT_STATIC".to_string(),
+                ));
+                // Do NOT set CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS for static libraries
+                // This flag causes CMake to export symbols for DLL linkage which creates
+                // __imp_ prefixed symbols that the linker can't find in static libraries
+                additional_defines.push((
+                    "CMAKE_MSVC_RUNTIME_LIBRARY".to_string(),
+                    "MultiThreadedDLL".to_string(),
+                ));
+            } else {
+                // MinGW/GNU toolchains reject MSVC-style flags, so stick to GCC syntax
+                cmake_cxx_flags.push_str("-std=c++17 -DTESSERACT_STATIC ");
+                additional_defines.push((
+                    "CMAKE_CXX_FLAGS_RELEASE".to_string(),
+                    "-O2 -DNDEBUG -DTESSERACT_STATIC".to_string(),
+                ));
+                additional_defines.push((
+                    "CMAKE_CXX_FLAGS_DEBUG".to_string(),
+                    "-O0 -g -DTESSERACT_STATIC".to_string(),
+                ));
+            }
         }
 
         // Common flags and defines for all platforms
@@ -390,6 +409,9 @@ mod build_tesseract {
             println!("cargo:rustc-link-lib=m");
             println!("cargo:rustc-link-lib=dl");
         } else if cfg!(target_os = "windows") {
+            if cfg!(target_env = "gnu") {
+                println!("cargo:rustc-link-lib=stdc++");
+            }
             // Windows requires explicit linking of system libraries for static tesseract
             println!("cargo:rustc-link-lib=user32");
             println!("cargo:rustc-link-lib=gdi32");
