@@ -216,6 +216,7 @@ mod build_tesseract {
         // TESSDATA_PREFIX should point to parent directory of tessdata, not tessdata itself
         // Tesseract will append the platform-specific path separator and 'tessdata' directory internally
         let tessdata_prefix = project_dir.clone();
+        let tessdata_prefix_cmake = normalize_cmake_path(&tessdata_prefix);
 
         build_or_use_cached(
             "tesseract",
@@ -259,7 +260,7 @@ mod build_tesseract {
                     .define("LEPTONICA_LIBRARY", &leptonica_lib_dir)
                     .define("CMAKE_PREFIX_PATH", &leptonica_install_dir)
                     .define("CMAKE_INSTALL_PREFIX", &tesseract_install_dir)
-                    .define("TESSDATA_PREFIX", &tessdata_prefix)
+                    .define("TESSDATA_PREFIX", &tessdata_prefix_cmake)
                     .define("DISABLE_TIFF", "ON")
                     .define("DISABLE_PNG", "ON")
                     .define("DISABLE_JPEG", "ON")
@@ -498,6 +499,10 @@ mod build_tesseract {
         fs::remove_file(temp_file).expect("Failed to remove temporary zip file");
 
         extract_dir
+    }
+
+    fn normalize_cmake_path(path: &Path) -> String {
+        path.to_string_lossy().replace('\\', "/")
     }
 
     fn download_tessdata(project_dir: &Path) {
