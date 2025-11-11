@@ -140,6 +140,21 @@ mod build_tesseract {
 
                 let makefile_static_path = leptonica_dir.join("prog").join("makefile.static");
 
+                let leptonica_src_cmakelists = leptonica_dir.join("src").join("CMakeLists.txt");
+
+                if leptonica_src_cmakelists.exists() {
+                    let cmakelists = std::fs::read_to_string(&leptonica_src_cmakelists)
+                        .expect("Failed to read leptonica src CMakeLists.txt");
+                    let patched = cmakelists.replace(
+                        "if(MINGW)\n  set_target_properties(\n    leptonica PROPERTIES SUFFIX\n                         \"-${PROJECT_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}\")\nendif(MINGW)\n",
+                        "if(MINGW AND BUILD_SHARED_LIBS)\n  set_target_properties(\n    leptonica PROPERTIES SUFFIX\n                         \"-${PROJECT_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}\")\nendif()\n",
+                    );
+                    if patched != cmakelists {
+                        std::fs::write(&leptonica_src_cmakelists, patched)
+                            .expect("Failed to patch leptonica src CMakeLists.txt");
+                    }
+                }
+
                 // Only modify makefile.static if it exists
                 if makefile_static_path.exists() {
                     let makefile_static = std::fs::read_to_string(&makefile_static_path)
@@ -553,8 +568,12 @@ mod build_tesseract {
     where
         F: FnOnce(),
     {
+        let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+        let is_windows = cfg!(target_os = "windows");
+        let is_windows_gnu = is_windows && target_env == "gnu";
+
         // Expected library name for caching
-        let lib_name = if cfg!(target_os = "windows") {
+        let lib_name = if is_windows && !is_windows_gnu {
             format!("{}.lib", name)
         } else {
             format!("lib{}.a", name)
@@ -565,8 +584,8 @@ mod build_tesseract {
 
         // For Windows, check multiple possible library names
         // Include both release and debug variants (debug has 'd' suffix)
-        let possible_lib_names: Vec<String> = if cfg!(target_os = "windows") {
-            match name {
+        let possible_lib_names: Vec<String> = if is_windows {
+            let mut base = match name {
                 "leptonica" => vec![
                     "leptonica.lib".to_string(),
                     "libleptonica.lib".to_string(),
@@ -594,7 +613,29 @@ mod build_tesseract {
                     "tesseract55d.lib".to_string(),
                 ],
                 _ => vec![format!("{}.lib", name)],
+            };
+
+            if is_windows_gnu {
+                match name {
+                    "leptonica" => {
+                        base.push(format!("libleptonica-{}.a", LEPTONICA_VERSION));
+                        base.push("libleptonica.a".to_string());
+                    }
+                    "tesseract" => {
+                        base.push(format!(
+                            "libtesseract{}.a",
+                            TESSERACT_VERSION.replace('.', "")
+                        ));
+                        base.push("libtesseract.a".to_string());
+                        base.push("libtesseract55.a".to_string());
+                    }
+                    _ => {
+                        base.push(format!("lib{}.a", name));
+                    }
+                }
             }
+
+            base
         } else {
             vec![format!("lib{}.a", name)]
         };
@@ -634,15 +675,21 @@ mod build_tesseract {
                             lib_path.display()
                         );
                         // Extract the library name without extension for linking
-                        let link_name = if cfg!(target_os = "windows") {
-                            lib_name.strip_suffix(".lib").unwrap_or(lib_name)
-                        } else {
+                        let link_name = if lib_name.ends_with(".lib") {
+                            lib_name
+                                .strip_suffix(".lib")
+                                .unwrap_or(lib_name)
+                                .to_string()
+                        } else if lib_name.ends_with(".a") {
                             lib_name
                                 .strip_prefix("lib")
                                 .and_then(|s| s.strip_suffix(".a"))
                                 .unwrap_or(lib_name)
+                                .to_string()
+                        } else {
+                            lib_name.to_string()
                         };
-                        found_lib_name = Some((lib_path, link_name.to_string()));
+                        found_lib_name = Some((lib_path, link_name));
                         break 'search;
                     }
                 }
