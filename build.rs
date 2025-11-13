@@ -586,6 +586,9 @@ mod build_tesseract {
         F: FnOnce(),
     {
         let target_env = env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+        let target_triple = env::var("TARGET").unwrap_or_else(|_| {
+            env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_else(|_| "unknown".to_string())
+        });
         let is_windows = cfg!(target_os = "windows");
         let is_windows_gnu = is_windows && target_env == "gnu";
 
@@ -597,6 +600,7 @@ mod build_tesseract {
         };
 
         let cached_path = cache_dir.join(&lib_name);
+        let marker_path = cache_dir.join(format!("{}.target", name));
         let out_path = install_dir.join("lib").join(&lib_name);
 
         // For Windows, check multiple possible library names
@@ -667,8 +671,36 @@ mod build_tesseract {
         ];
 
         // Determine which library name to use for linking
-        let link_name_to_use = if cached_path.exists() {
-            println!("Using cached {} library", name);
+        let cache_valid = cached_path.exists()
+            && {
+                match fs::read_to_string(&marker_path) {
+                    Ok(cached_target) => {
+                        let valid = cached_target.trim() == target_triple;
+                        if !valid {
+                            println!(
+                                "cargo:warning=Cached {} library is for wrong architecture (cached: {}, current: {}), rebuilding",
+                                name,
+                                cached_target.trim(),
+                                target_triple
+                            );
+                        }
+                        valid
+                    }
+                    Err(_) => {
+                        println!(
+                            "cargo:warning=Cached {} library missing target marker, rebuilding",
+                            name
+                        );
+                        false
+                    }
+                }
+            };
+
+        let link_name_to_use = if cache_valid {
+            println!(
+                "cargo:warning=Using cached {} library for {}",
+                name, target_triple
+            );
             if let Err(e) = fs::copy(&cached_path, &out_path) {
                 println!("cargo:warning=Failed to copy cached library: {}", e);
                 // If cache copy fails, rebuild
@@ -728,6 +760,16 @@ mod build_tesseract {
                 // Cache the library
                 if let Err(e) = fs::copy(&lib_path, &cached_path) {
                     println!("cargo:warning=Failed to cache library: {}", e);
+                } else {
+                    // Write target marker file
+                    if let Err(e) = fs::write(&marker_path, &target_triple) {
+                        println!("cargo:warning=Failed to write cache marker: {}", e);
+                    } else {
+                        println!(
+                            "cargo:warning=Cached {} library for {}",
+                            name, target_triple
+                        );
+                    }
                 }
                 link_name
             } else {
