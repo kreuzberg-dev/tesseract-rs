@@ -683,6 +683,9 @@ mod build_tesseract {
                                 cached_target.trim(),
                                 target_triple
                             );
+                            // Delete invalid cached library to force rebuild
+                            let _ = fs::remove_file(&cached_path);
+                            let _ = fs::remove_file(&marker_path);
                         }
                         valid
                     }
@@ -691,6 +694,8 @@ mod build_tesseract {
                             "cargo:warning=Cached {} library missing target marker, rebuilding",
                             name
                         );
+                        // Delete cached library without marker to force rebuild
+                        let _ = fs::remove_file(&cached_path);
                         false
                     }
                 }
