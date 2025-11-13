@@ -25,9 +25,26 @@ mod build_tesseract {
         )
     }
 
+    fn workspace_cache_dir_from_out_dir() -> Option<PathBuf> {
+        let out_dir = env::var_os("OUT_DIR")?;
+        let mut path = PathBuf::from(out_dir);
+        // OUT_DIR looks like target/<triple>/<profile>/build/<crate-hash>/out
+        // Pop until we get back to target/<triple>
+        for _ in 0..4 {
+            if !path.pop() {
+                return None;
+            }
+        }
+        Some(path.join("tesseract-rs-cache"))
+    }
+
     fn get_preferred_out_dir() -> PathBuf {
         if let Ok(custom) = env::var("TESSERACT_RS_CACHE_DIR") {
             return PathBuf::from(custom);
+        }
+
+        if let Some(workspace_cache) = workspace_cache_dir_from_out_dir() {
+            return workspace_cache;
         }
 
         if cfg!(target_os = "macos") {
