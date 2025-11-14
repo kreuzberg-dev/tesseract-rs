@@ -376,10 +376,35 @@ mod build_tesseract {
                     .unwrap_or(false)
             {
                 cmake_cxx_flags.push_str("-stdlib=libc++ ");
-                additional_defines.push(("CMAKE_CXX_COMPILER".to_string(), "clang++".to_string()));
+                // Use CXX env var if set, otherwise derive from target for cross-compilation
+                let cxx_compiler = env::var("CXX").unwrap_or_else(|_| {
+                    if let Ok(target) = env::var("TARGET") {
+                        if target != env::var("HOST").unwrap_or_default() {
+                            // Cross-compiling - use target-prefixed compiler
+                            format!("{}-clang++", target)
+                        } else {
+                            "clang++".to_string()
+                        }
+                    } else {
+                        "clang++".to_string()
+                    }
+                });
+                additional_defines.push(("CMAKE_CXX_COMPILER".to_string(), cxx_compiler));
             } else {
-                // Assume GCC
-                additional_defines.push(("CMAKE_CXX_COMPILER".to_string(), "g++".to_string()));
+                // Assume GCC - use CXX env var if set, otherwise derive from target for cross-compilation
+                let cxx_compiler = env::var("CXX").unwrap_or_else(|_| {
+                    if let Ok(target) = env::var("TARGET") {
+                        if target != env::var("HOST").unwrap_or_default() {
+                            // Cross-compiling - use target-prefixed compiler
+                            format!("{}-g++", target)
+                        } else {
+                            "g++".to_string()
+                        }
+                    } else {
+                        "g++".to_string()
+                    }
+                });
+                additional_defines.push(("CMAKE_CXX_COMPILER".to_string(), cxx_compiler));
             }
         } else if cfg!(target_os = "windows") {
             if cfg!(target_env = "msvc") {
