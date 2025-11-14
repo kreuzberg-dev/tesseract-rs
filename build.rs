@@ -366,9 +366,9 @@ mod build_tesseract {
 
         if cfg!(target_os = "macos") {
             cmake_cxx_flags.push_str("-stdlib=libc++ ");
-            cmake_cxx_flags.push_str("-std=c++11 ");
+            cmake_cxx_flags.push_str("-std=c++17 ");
         } else if cfg!(target_os = "linux") {
-            cmake_cxx_flags.push_str("-std=c++11 ");
+            cmake_cxx_flags.push_str("-std=c++17 ");
             // Check if we're on a system using clang
             if cfg!(target_env = "musl")
                 || env::var("CC")
@@ -462,6 +462,9 @@ mod build_tesseract {
                 println!("cargo:rustc-link-lib=c++");
             } else {
                 println!("cargo:rustc-link-lib=stdc++");
+                // GCC < 9 requires explicit linking of stdc++fs for filesystem support
+                // It's safe to link even if not needed (GCC 9+ has it built-in)
+                println!("cargo:rustc-link-lib=stdc++fs");
             }
             println!("cargo:rustc-link-lib=pthread");
             println!("cargo:rustc-link-lib=m");
