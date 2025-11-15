@@ -2,8 +2,8 @@
 name = "kreuzberg-tesseract"
 version = "1.0.0-rc.1"
 edition = "2024"
-authors = ["Na'aman Hirschfeld <nhirschfeld@gmail.com>", "Cafer Can Gündoğdu <cafercangundogdu@gmail.com>"]
-description = "Maintained fork of tesseract-rs with cross-compilation, C++17, and caching improvements"
+authors = ["Na'aman Hirschfeld <nhirschfeld@gmail.com>"]
+description = "Rust bindings for Tesseract OCR with cross-compilation, C++17, and caching improvements"
 license = "MIT"
 repository = "https://github.com/kreuzberg-dev/tesseract-rs"
 documentation = "https://docs.rs/kreuzberg-tesseract"

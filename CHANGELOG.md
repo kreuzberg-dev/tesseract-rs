@@ -5,14 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0-rc.1] - 2025-11-15 (kreuzberg-tesseract fork)
+## [1.0.0-rc.1] - 2025-11-15
 
-### Fork Information
+### About This Release
 
-This is **kreuzberg-tesseract**, a maintained fork of [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs) published to enable [kreuzberg](https://github.com/Goldziher/kreuzberg) to be published to crates.io.
-
-**Upstream**: https://github.com/cafercangundogdu/tesseract-rs
-**This Fork**: https://github.com/kreuzberg-dev/tesseract-rs
+This is **kreuzberg-tesseract**, a maintained version of Tesseract OCR Rust bindings based on the original [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs) by Cafer Can Gündoğdu. This release enables [kreuzberg](https://github.com/Goldziher/kreuzberg) to be published to crates.io with enhanced cross-compilation and build reliability.
 
 ### Added
 - C++17 filesystem support for Tesseract 5.5.1 compatibility

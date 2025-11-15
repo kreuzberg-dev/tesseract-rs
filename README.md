@@ -1,12 +1,8 @@
 # kreuzberg-tesseract
 
-**Maintained fork of [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs)** with critical build fixes for cross-compilation, Windows, and modern Tesseract versions.
-
 Rust bindings for Tesseract OCR with built-in compilation of Tesseract and Leptonica libraries. Provides a safe and idiomatic Rust interface to Tesseract's functionality while handling the complexity of compiling the underlying C++ libraries.
 
-## Why This Fork?
-
-This fork adds critical improvements for production use:
+Based on the original [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs) by Cafer Can Gündoğdu, this maintained version adds critical improvements for production use:
 
 - **C++17 Support**: Upgraded for Tesseract 5.5.1 which requires C++17 filesystem
 - **Cross-Compilation**: Fixed CXX compiler detection for cross-platform builds
@@ -14,9 +10,6 @@ This fork adds critical improvements for production use:
 - **Windows Static Linking**: Fixed MSVC static linking issues
 - **Build Caching**: Improved caching with OUT_DIR-based cache directory
 - **MinGW Support**: Added support for MinGW toolchains
-
-**Upstream**: https://github.com/cafercangundogdu/tesseract-rs
-**This Fork**: https://github.com/kreuzberg-dev/tesseract-rs
 
 ## Features
 
@@ -382,9 +375,9 @@ For more detailed information, please check the [API documentation](https://docs
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Contributors
+## Acknowledgements
 
-- [Cafer Can Gündoğdu](https://github.com/cafercangundogdu)
+This project is based on the original [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs) by [Cafer Can Gündoğdu](https://github.com/cafercangundogdu). We are grateful for the foundational work that made this project possible.
 
 ## Contributing
 
