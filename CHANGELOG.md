@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc.1] - 2025-11-15 (kreuzberg-tesseract fork)
+
+### Fork Information
+
+This is **kreuzberg-tesseract**, a maintained fork of [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs) published to enable [kreuzberg](https://github.com/Goldziher/kreuzberg) to be published to crates.io.
+
+**Upstream**: https://github.com/cafercangundogdu/tesseract-rs
+**This Fork**: https://github.com/kreuzberg-dev/tesseract-rs
+
+### Added
+- C++17 filesystem support for Tesseract 5.5.1 compatibility
+- Cross-compilation aware CXX compiler detection
+- Target architecture validation before using cached libraries
+- OUT_DIR-based cache directory derivation
+- Temporary cache fallback when default location not writable
+- Support for MinGW toolchains
+- Escaped tessdata prefix handling
+
+### Fixed
+- Cross-compilation builds with proper CXX compiler detection
+- Windows static linking issues with MSVC
+- Invalid cached libraries deleted before rebuild
+- lib64 install directory detection
+- Windows conflicting #[link] attributes for static linking
+
+### Changed
+- **BREAKING**: Crate renamed from `tesseract-rs` to `kreuzberg-tesseract`
+- **BREAKING**: Library name changed from `tesseract_rs` to `kreuzberg_tesseract`
+- Build uses rustls for reqwest dependency instead of default TLS
+
+---
+
+## Upstream Changes (tesseract-rs)
+
+The following changes are from the upstream [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs) project:
+
 ## [0.2.0] - 2025-11-01
 
 ### Added

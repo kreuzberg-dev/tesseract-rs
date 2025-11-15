@@ -1,6 +1,22 @@
-# tesseract-rs
+# kreuzberg-tesseract
 
-`tesseract-rs` is a Rust binding for Tesseract OCR with built-in compilation of Tesseract and Leptonica libraries. This project aims to provide a safe and idiomatic Rust interface to Tesseract's functionality while handling the complexity of compiling the underlying C++ libraries.
+**Maintained fork of [tesseract-rs](https://github.com/cafercangundogdu/tesseract-rs)** with critical build fixes for cross-compilation, Windows, and modern Tesseract versions.
+
+Rust bindings for Tesseract OCR with built-in compilation of Tesseract and Leptonica libraries. Provides a safe and idiomatic Rust interface to Tesseract's functionality while handling the complexity of compiling the underlying C++ libraries.
+
+## Why This Fork?
+
+This fork adds critical improvements for production use:
+
+- **C++17 Support**: Upgraded for Tesseract 5.5.1 which requires C++17 filesystem
+- **Cross-Compilation**: Fixed CXX compiler detection for cross-platform builds
+- **Architecture Validation**: Validates target architecture before using cached libraries
+- **Windows Static Linking**: Fixed MSVC static linking issues
+- **Build Caching**: Improved caching with OUT_DIR-based cache directory
+- **MinGW Support**: Added support for MinGW toolchains
+
+**Upstream**: https://github.com/cafercangundogdu/tesseract-rs
+**This Fork**: https://github.com/kreuzberg-dev/tesseract-rs
 
 ## Features
 
@@ -21,9 +37,9 @@ Static linking builds Tesseract and Leptonica from source and embeds them in you
 
 ```toml
 [dependencies]
-tesseract-rs = "0.2.0"
+kreuzberg-tesseract = "1.0.0-rc.1"
 # or explicitly:
-tesseract-rs = { version = "0.2.0", features = ["static-linking"] }
+kreuzberg-tesseract = { version = "1.0.0-rc.1", features = ["static-linking"] }
 ```
 
 ### Dynamic Linking
@@ -32,7 +48,7 @@ Dynamic linking uses system-installed Tesseract and Leptonica libraries. Faster 
 
 ```toml
 [dependencies]
-tesseract-rs = { version = "0.2.0", features = ["dynamic-linking"], default-features = false }
+kreuzberg-tesseract = { version = "1.0.0-rc.1", features = ["dynamic-linking"], default-features = false }
 ```
 
 **System requirements for dynamic linking:**
@@ -155,7 +171,7 @@ Here's a basic example of how to use `tesseract-rs`:
 ```rust
 use std::path::PathBuf;
 use std::error::Error;
-use tesseract_rs::TesseractAPI;
+use kreuzberg_tesseract::TesseractAPI;
 
 fn get_default_tessdata_dir() -> PathBuf {
     if cfg!(target_os = "macos") {
@@ -270,7 +286,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 The API provides additional functionality for more complex OCR tasks, including thread-safe operations:
 
 ```rust
-use tesseract_rs::TesseractAPI;
+use kreuzberg_tesseract::TesseractAPI;
 use std::sync::Arc;
 use std::thread;
 use std::error::Error;
@@ -360,7 +376,7 @@ cargo build --no-default-features --features dynamic-linking
 
 ## Documentation
 
-For more detailed information, please check the [API documentation](https://docs.rs/tesseract-rs).
+For more detailed information, please check the [API documentation](https://docs.rs/kreuzberg-tesseract).
 
 ## License
 
