@@ -74,28 +74,8 @@ mod build_tesseract {
             PathBuf::from(home_dir).join(".tesseract-rs")
         } else if cfg!(target_os = "windows") {
             // Windows MAX_PATH (260 char) handling: use shortest possible path
-            // Prefer temp directory to avoid nested gem/gem version paths in Ruby on Windows
-            let temp_dir = env::temp_dir();
-            let cache_dir = temp_dir.join("tesseract-rs-cache");
-
-            // Verify path length is reasonable (leave buffer for build artifacts)
-            let path_str = cache_dir.to_string_lossy();
-            if path_str.len() > 100 {
-                // Temp dir path is too long, fall back to APPDATA
-                println!(
-                    "cargo:warning=Temp directory path too long ({}), using APPDATA",
-                    path_str.len()
-                );
-                env::var("APPDATA")
-                    .or_else(|_| {
-                        env::var("USERPROFILE").map(|p| format!("{}\\AppData\\Roaming", p))
-                    })
-                    .map(PathBuf::from)
-                    .expect("Neither APPDATA nor USERPROFILE environment variable set")
-                    .join("tesseract-rs")
-            } else {
-                cache_dir
-            }
+            // Use C:\tess as the absolute shortest path to avoid path length issues
+            PathBuf::from("C:\\tess")
         } else {
             panic!("Unsupported operating system");
         }
@@ -478,25 +458,23 @@ mod build_tesseract {
         ));
 
         // Windows-specific path length mitigation
-        if cfg!(target_os = "windows") {
-            if cfg!(target_env = "msvc") {
-                // MSVC-specific flags to reduce intermediate path depth
-                // /d2Zi+ uses shorter symbol names, /permissive- speeds up and uses less space
-                cmake_cxx_flags.push_str("/permissive- ");
-                // Disable incremental linking which creates longer paths
-                additional_defines.push((
-                    "CMAKE_EXE_LINKER_FLAGS".to_string(),
-                    "/INCREMENTAL:NO".to_string(),
-                ));
-                additional_defines.push((
-                    "CMAKE_SHARED_LINKER_FLAGS".to_string(),
-                    "/INCREMENTAL:NO".to_string(),
-                ));
-                additional_defines.push((
-                    "CMAKE_MODULE_LINKER_FLAGS".to_string(),
-                    "/INCREMENTAL:NO".to_string(),
-                ));
-            }
+        if cfg!(target_os = "windows") && cfg!(target_env = "msvc") {
+            // MSVC-specific flags to reduce intermediate path depth
+            // /d2Zi+ uses shorter symbol names, /permissive- speeds up and uses less space
+            cmake_cxx_flags.push_str("/permissive- ");
+            // Disable incremental linking which creates longer paths
+            additional_defines.push((
+                "CMAKE_EXE_LINKER_FLAGS".to_string(),
+                "/INCREMENTAL:NO".to_string(),
+            ));
+            additional_defines.push((
+                "CMAKE_SHARED_LINKER_FLAGS".to_string(),
+                "/INCREMENTAL:NO".to_string(),
+            ));
+            additional_defines.push((
+                "CMAKE_MODULE_LINKER_FLAGS".to_string(),
+                "/INCREMENTAL:NO".to_string(),
+            ));
         }
 
         (cmake_cxx_flags, additional_defines)
