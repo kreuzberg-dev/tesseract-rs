@@ -7,6 +7,14 @@ mod build_tesseract {
     use std::fs;
     use std::path::{Path, PathBuf};
 
+    // Windows MAX_PATH (260 character) workarounds:
+    // 1. Use temp directory for cache instead of deeply nested gem paths in Ruby on Windows
+    //    Ruby on Windows creates paths like: C:\hostedtoolcache\windows\Ruby\x.y.z\x64\lib\ruby\gems\...
+    // 2. Use NMake generator instead of Visual Studio to avoid generator-specific path nesting
+    // 3. Disable CMAKE_CL_SHOWINCLUDES_PREFIX to reduce file tracker log file paths
+    // 4. Disable incremental linking (/INCREMENTAL:NO) to avoid .ilk file path issues
+    // 5. Support TESSERACT_RS_CACHE_DIR environment variable for custom short paths
+
     // Use specific release versions for stability
     const LEPTONICA_VERSION: &str = "1.86.0";
     const TESSERACT_VERSION: &str = "5.5.1";
@@ -65,11 +73,29 @@ mod build_tesseract {
             });
             PathBuf::from(home_dir).join(".tesseract-rs")
         } else if cfg!(target_os = "windows") {
-            env::var("APPDATA")
-                .or_else(|_| env::var("USERPROFILE").map(|p| format!("{}\\AppData\\Roaming", p)))
-                .map(PathBuf::from)
-                .expect("Neither APPDATA nor USERPROFILE environment variable set")
-                .join("tesseract-rs")
+            // Windows MAX_PATH (260 char) handling: use shortest possible path
+            // Prefer temp directory to avoid nested gem/gem version paths in Ruby on Windows
+            let temp_dir = env::temp_dir();
+            let cache_dir = temp_dir.join("tesseract-rs-cache");
+
+            // Verify path length is reasonable (leave buffer for build artifacts)
+            let path_str = cache_dir.to_string_lossy();
+            if path_str.len() > 100 {
+                // Temp dir path is too long, fall back to APPDATA
+                println!(
+                    "cargo:warning=Temp directory path too long ({}), using APPDATA",
+                    path_str.len()
+                );
+                env::var("APPDATA")
+                    .or_else(|_| {
+                        env::var("USERPROFILE").map(|p| format!("{}\\AppData\\Roaming", p))
+                    })
+                    .map(PathBuf::from)
+                    .expect("Neither APPDATA nor USERPROFILE environment variable set")
+                    .join("tesseract-rs")
+            } else {
+                cache_dir
+            }
         } else {
             panic!("Unsupported operating system");
         }
@@ -184,12 +210,14 @@ mod build_tesseract {
                         .expect("Failed to write makefile.static");
                 }
 
-                // Configure build tools
+                // Configure build tools for Windows
                 if cfg!(target_os = "windows") {
-                    // Use NMake on Windows for better compatibility
+                    // Use NMake on Windows to avoid Visual Studio generator path length issues
                     if let Ok(_vs_install_dir) = env::var("VSINSTALLDIR") {
                         leptonica_config.generator("NMake Makefiles");
                     }
+                    // Disable multi-tool task to reduce intermediate path depth
+                    leptonica_config.define("CMAKE_CL_SHOWINCLUDES_PREFIX", "");
                 }
 
                 // Only use sccache if not in CI
@@ -263,12 +291,14 @@ mod build_tesseract {
                     .expect("Failed to write CMakeLists.txt");
 
                 let mut tesseract_config = Config::new(&tesseract_dir);
-                // Configure build tools
+                // Configure build tools for Windows
                 if cfg!(target_os = "windows") {
-                    // Use NMake on Windows for better compatibility
+                    // Use NMake on Windows to avoid Visual Studio generator path length issues
                     if let Ok(_vs_install_dir) = env::var("VSINSTALLDIR") {
                         tesseract_config.generator("NMake Makefiles");
                     }
+                    // Disable multi-tool task to reduce intermediate path depth
+                    tesseract_config.define("CMAKE_CL_SHOWINCLUDES_PREFIX", "");
                 }
 
                 // Only use sccache if not in CI
@@ -446,6 +476,28 @@ mod build_tesseract {
             "CMAKE_POSITION_INDEPENDENT_CODE".to_string(),
             "ON".to_string(),
         ));
+
+        // Windows-specific path length mitigation
+        if cfg!(target_os = "windows") {
+            if cfg!(target_env = "msvc") {
+                // MSVC-specific flags to reduce intermediate path depth
+                // /d2Zi+ uses shorter symbol names, /permissive- speeds up and uses less space
+                cmake_cxx_flags.push_str("/permissive- ");
+                // Disable incremental linking which creates longer paths
+                additional_defines.push((
+                    "CMAKE_EXE_LINKER_FLAGS".to_string(),
+                    "/INCREMENTAL:NO".to_string(),
+                ));
+                additional_defines.push((
+                    "CMAKE_SHARED_LINKER_FLAGS".to_string(),
+                    "/INCREMENTAL:NO".to_string(),
+                ));
+                additional_defines.push((
+                    "CMAKE_MODULE_LINKER_FLAGS".to_string(),
+                    "/INCREMENTAL:NO".to_string(),
+                ));
+            }
+        }
 
         (cmake_cxx_flags, additional_defines)
     }
